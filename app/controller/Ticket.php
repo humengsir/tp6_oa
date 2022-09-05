@@ -83,12 +83,13 @@ class Ticket extends BaseController
             if ($info['point_uid'] != $this->user_info['id']) {
                 return json(['error_msg' => '该工单目前不能被您审核']);
             }
+            $data = [];
+            $index = count($approve_uid) + 1;
+            if ($index == 1) {
+                $data['status'] = 2;
+            }
             if ($judge_status) {
                 //通过
-                $index = count($approve_uid);
-                if ($index == 0) {
-                    $data['status'] = 2;
-                }
                 $approve_uid[] = $this->user_info['id'];
                 $point_uid = isset($leader_uid[$index]) ? $leader_uid[$index] : 0;
                 $data['point_uid'] = $point_uid;

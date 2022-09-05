@@ -5,8 +5,7 @@ use app\BaseController;
 use app\model\TicketModel;
 use app\Request;
 use think\facade\View;
-use think\response\Redirect;
-use app\common\MyPaginator;
+use app\common\TicketLink;
 
 class Ticket extends BaseController
 {
@@ -72,8 +71,6 @@ class Ticket extends BaseController
                 return json(['error_msg' => '该工单不存在']);
             }
             $info = $info->toArray();
-            $leader_uid = array_filter(explode(',', $info['leader_uid']));
-            $approve_uid = array_filter(explode(',', $info['approve_uid']));
             if ($info['status'] == -1) {
                 return json(['error_msg' => '该工单状态被取消']);
             }
@@ -83,29 +80,19 @@ class Ticket extends BaseController
             if ($info['point_uid'] != $this->user_info['id']) {
                 return json(['error_msg' => '该工单目前不能被您审核']);
             }
-            $data = [];
-            $index = count($approve_uid) + 1;
-            if ($index == 1) {
-                $data['status'] = 2;
-            }
+            $ticket_link = new TicketLink($info['leader_uid'], $info['approve_uid'], $info['point_uid'], $info['status']);
             if ($judge_status) {
                 //通过
-                $approve_uid[] = $this->user_info['id'];
-                $point_uid = isset($leader_uid[$index]) ? $leader_uid[$index] : 0;
-                $data['point_uid'] = $point_uid;
-                $data['approve_uid'] = implode(',', $approve_uid);
-                if ($point_uid == 0) {
-                    $data['status'] = 3;
-                }
+                $ticket_link->forward();
             } else {
                 // 拒绝
-                $last_uid = array_pop($approve_uid);
-                if (!$last_uid) {
-                    $last_uid = current($leader_uid);
-                }
-                $data['point_uid'] = $last_uid;
-                $data['approve_uid'] = implode(',', $approve_uid);
+                $ticket_link->back();
             }
+            $data = [
+                'point_uid' => $ticket_link->get_point_uid(),
+                'approve_uid' => $ticket_link->get_approve_uid(),
+                'status' => $ticket_link->get_status(),
+            ];
             $res = $this->model->where(['id' => $id])->update($data);
             if ($res !== false) {
                 return json(['error_msg' => '']);
